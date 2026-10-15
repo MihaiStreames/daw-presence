@@ -36,7 +36,7 @@ jobs:
         run: cargo build --release
 
       - name: Upload binary
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dawpresence-exe-raw
           path: target/release/DAWPresence.exe
@@ -61,7 +61,7 @@ jobs:
         run: upx --best dist/DAWPresence.exe
 
       - name: Upload packed binary
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dawpresence-exe
           path: dist/DAWPresence.exe
@@ -89,7 +89,7 @@ jobs:
         run: ./scripts/build-installer.ps1 -Version ($env:VERSION -replace '^v', '')
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dawpresence-windows
           path: dist/
