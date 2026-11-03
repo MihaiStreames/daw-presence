@@ -2,7 +2,7 @@
 
 All notable changes to DAWPresence.
 
-## [3.0.6] - 2026-10-05
+## [3.0.6] - 2026-11-03
 
 ### Fixed
 
