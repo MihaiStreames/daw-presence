@@ -5,11 +5,11 @@ use windows_sys::Win32::System::Registry::HKEY;
 use windows_sys::Win32::System::Registry::RegCloseKey;
 
 /// Owned Win32 handle which calls [`CloseHandle`] on drop
-pub(crate) struct OwnedHandle(HANDLE);
+pub struct OwnedHandle(HANDLE);
 
 impl OwnedHandle {
     /// Wrap a raw handle and return `None` for null or [`INVALID_HANDLE_VALUE`]
-    pub(crate) fn new(raw: HANDLE) -> Option<Self> {
+    pub fn new(raw: HANDLE) -> Option<Self> {
         if raw.is_null() || raw == INVALID_HANDLE_VALUE {
             None
         } else {
@@ -17,7 +17,7 @@ impl OwnedHandle {
         }
     }
 
-    pub(crate) const fn raw(&self) -> HANDLE {
+    pub const fn raw(&self) -> HANDLE {
         self.0
     }
 }
@@ -34,7 +34,7 @@ impl Drop for OwnedHandle {
 }
 
 /// Owned Win32 registry key which calls [`RegCloseKey`] on drop
-pub(crate) struct OwnedKey(pub(crate) HKEY);
+pub struct OwnedKey(pub HKEY);
 
 impl Drop for OwnedKey {
     fn drop(&mut self) {

@@ -24,13 +24,13 @@ use super::handle::OwnedHandle;
 
 /// A process from the system snapshot
 #[derive(Debug, Clone)]
-pub(crate) struct ProcessEntry {
-    pub(crate) pid: u32,
-    pub(crate) name: String,
+pub struct ProcessEntry {
+    pub pid: u32,
+    pub name: String,
 }
 
 /// Enumerate all running processes
-pub(crate) fn snapshot() -> Vec<ProcessEntry> {
+pub fn snapshot() -> Vec<ProcessEntry> {
     let raw = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
     let Some(_guard) = OwnedHandle::new(raw) else {
         return Vec::new();
@@ -66,7 +66,7 @@ pub(crate) fn snapshot() -> Vec<ProcessEntry> {
 }
 
 /// Open a process handle for monitoring and synchronization
-pub(crate) fn open(pid: u32) -> Option<OwnedHandle> {
+pub fn open(pid: u32) -> Option<OwnedHandle> {
     let raw = unsafe {
         OpenProcess(
             PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SYNCHRONIZE,
@@ -79,7 +79,7 @@ pub(crate) fn open(pid: u32) -> Option<OwnedHandle> {
 }
 
 /// Working set memory in bytes
-pub(crate) fn memory_bytes(handle: HANDLE) -> Option<u64> {
+pub fn memory_bytes(handle: HANDLE) -> Option<u64> {
     let mut counters: PROCESS_MEMORY_COUNTERS = unsafe { zeroed() };
     counters.cb = size_of::<PROCESS_MEMORY_COUNTERS>() as u32;
 
@@ -92,7 +92,7 @@ pub(crate) fn memory_bytes(handle: HANDLE) -> Option<u64> {
 }
 
 /// Kernel + user time in 100ns ticks
-pub(crate) fn cpu_times(handle: HANDLE) -> Option<(u64, u64)> {
+pub fn cpu_times(handle: HANDLE) -> Option<(u64, u64)> {
     let mut creation = 0u64;
     let mut exit = 0u64;
     let mut kernel = 0u64;
@@ -116,7 +116,7 @@ pub(crate) fn cpu_times(handle: HANDLE) -> Option<(u64, u64)> {
 }
 
 /// Full executable path for a process
-pub(crate) fn exe_path(handle: HANDLE) -> Option<PathBuf> {
+pub fn exe_path(handle: HANDLE) -> Option<PathBuf> {
     let mut buf = [0u16; MAX_PATH as usize];
     let mut len = buf.len() as u32;
 
@@ -129,7 +129,7 @@ pub(crate) fn exe_path(handle: HANDLE) -> Option<PathBuf> {
 }
 
 /// Wall-clock time in 100ns ticks
-pub(crate) fn wall_ticks() -> u64 {
+pub fn wall_ticks() -> u64 {
     // epoch offset cancels in delta calculations
     SystemTime::now()
         .duration_since(UNIX_EPOCH)

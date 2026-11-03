@@ -1,6 +1,6 @@
 [package]
 name         = "dawpresence"
-version      = "3.0.5"
+version      = "3.0.6"
 edition      = "2024"
 rust-version = "1.92"
 authors      = ["MihaiStreames <72852703+MihaiStreames@users.noreply.github.com>"]
@@ -22,7 +22,6 @@ future_incompatible       = { level = "warn", priority = -1 }
 nonstandard_style         = { level = "warn", priority = -1 }
 rust_2018_idioms          = { level = "warn", priority = -1 }
 trivial_numeric_casts     = "warn"
-unreachable_pub           = "warn"
 unsafe_code               = "warn"
 unsafe_op_in_unsafe_fn    = "warn"
 unused_crate_dependencies = "warn"
@@ -48,11 +47,11 @@ wildcard_imports         = "allow"
 confy                 = "2.0.0"
 crossbeam-channel     = "0.5.17"
 discord-rich-presence = "1.1.0"
-fancy-regex           = { version = "0.19.2", default-features = false, features = ["std", "unicode", "variable-lookbehinds"] }
+fancy-regex           = { version = "0.20.0", default-features = false, features = ["std", "unicode", "variable-lookbehinds"] }
 iced                  = { version = "0.14.0", default-features = false, features = ["crisp", "smol", "tiny-skia"] }
 image                 = { version = "0.25.10", default-features = false, features = ["ico", "png"] }
 serde                 = { version = "1.0.229", features = ["derive"] }
-serde_json            = "1.0.151"
+serde_json            = "1.0.154"
 thiserror             = "2.0.21"
 tracing               = { version = "0.1.44", features = ["release_max_level_off"] }
 tracing-subscriber    = { version = "0.3.23", default-features = false, features = ["fmt", "env-filter", "smallvec"] }
@@ -70,10 +69,10 @@ windows-sys = { version = "0.61.2", features = [
 ] }
 
 [dev-dependencies]
-toml = "1.1.6"
+toml = "1.1.8"
 
 [build-dependencies]
-winresource = "0.1.31"
+winresource = "0.1.34"
 
 [[bin]]
 name = "DAWPresence"

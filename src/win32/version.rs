@@ -13,7 +13,7 @@ const QUERY: &str = "\\VarFileInfo\\Translation";
 
 /// Read the `ProductVersion` string from a PE file's version resource,
 /// returning [`UNKNOWN_VERSION`] if the version cannot be read
-pub(crate) fn exe_version(path: &Path) -> String {
+pub fn exe_version(path: &Path) -> String {
     let path_wide: Vec<u16> = path.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
 
     let Some(data) = load_version_info(&path_wide) else {

@@ -1,8 +1,8 @@
 mod components;
 mod pages;
 mod strings;
-pub(crate) mod style;
-pub(crate) mod tray;
+pub mod style;
+pub mod tray;
 
 use iced::Length;
 use iced::widget::container;
@@ -13,7 +13,7 @@ use crate::state::Message;
 use crate::state::Page;
 
 /// Render the main app layout
-pub(crate) fn view(state: &AppState) -> iced::Element<'_, Message> {
+pub fn view(state: &AppState) -> iced::Element<'_, Message> {
     let content = match state.active_page {
         Page::Home => pages::home_view(state),
         Page::Settings => pages::settings_view(state),

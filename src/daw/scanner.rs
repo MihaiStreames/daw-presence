@@ -42,7 +42,7 @@ struct AttachedDaw {
 /// Two-phase DAW monitor:
 /// 1. Discovery via process snapshot
 /// 2. Per-PID metric polling
-pub(crate) struct DawScanner {
+pub struct DawScanner {
     configs: Vec<NormalizedConfig>,
     regex_cache: RegexCache,
     attached: Option<AttachedDaw>,
@@ -51,7 +51,7 @@ pub(crate) struct DawScanner {
 }
 
 impl DawScanner {
-    pub(crate) fn new(configs: Vec<DawConfig>) -> Self {
+    pub fn new(configs: Vec<DawConfig>) -> Self {
         let normalized = NormalizedConfig::from_configs(configs);
         debug!("Loaded {} DAW configs", normalized.len());
 
@@ -66,7 +66,7 @@ impl DawScanner {
 
     /// Returns current DAW status, or `None` if no DAW is running
     /// (transitions between discovery and monitoring automatically)
-    pub(crate) fn poll(&mut self) -> Option<DawStatus> {
+    pub fn poll(&mut self) -> Option<DawStatus> {
         self.handle_exits();
 
         if self.attached.is_some() {

@@ -13,7 +13,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::IsWindowVisible;
 use windows_sys::core::BOOL;
 
 /// Collect all visible window titles for a PID
-pub(crate) fn window_titles(pid: u32) -> Vec<String> {
+pub fn window_titles(pid: u32) -> Vec<String> {
     struct State {
         target_pid: u32,
         titles: Vec<String>,

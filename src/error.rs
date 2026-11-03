@@ -2,7 +2,7 @@ use thiserror::Error;
 
 /// Configuration loading and validation errors
 #[derive(Error, Debug)]
-pub(crate) enum ConfigError {
+pub enum ConfigError {
     #[error("Couldn't read daws.json: {0}")]
     ReadFailed(#[from] std::io::Error),
 
@@ -24,7 +24,7 @@ pub(crate) enum ConfigError {
 
 /// Discord IPC connection errors
 #[derive(Error, Debug)]
-pub(crate) enum DiscordError {
+pub enum DiscordError {
     #[error("Couldn't connect to Discord: {0}")]
     Connect(String),
 
@@ -37,7 +37,7 @@ pub(crate) enum DiscordError {
 
 /// Tray icon errors
 #[derive(Error, Debug)]
-pub(crate) enum TrayError {
+pub enum TrayError {
     #[error("Couldn't create tray icon: {0}")]
     CreateFailed(String),
 
