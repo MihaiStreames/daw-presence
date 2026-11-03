@@ -1,22 +1,22 @@
-pub(crate) const UNKNOWN_VERSION: &str = "0.0.0";
-pub(crate) const UNKNOWN_PROJECT: &str = "None";
-pub(crate) const UNTITLED_PROJECT: &str = "Untitled";
+pub const UNKNOWN_VERSION: &str = "0.0.0";
+pub const UNKNOWN_PROJECT: &str = "None";
+pub const UNTITLED_PROJECT: &str = "Untitled";
 
 /// Current state of a detected DAW
 #[derive(Debug, Clone, Default)]
-pub(crate) struct DawStatus {
-    pub(crate) is_running: bool,
-    pub(crate) display_name: String,
-    pub(crate) project_name: String,
-    pub(crate) cpu_usage: f32,
-    pub(crate) memory_mb: u64,
-    pub(crate) version: String,
-    pub(crate) client_id: String,
-    pub(crate) hide_version: bool,
+pub struct DawStatus {
+    pub is_running: bool,
+    pub display_name: String,
+    pub project_name: String,
+    pub cpu_usage: f32,
+    pub memory_mb: u64,
+    pub version: String,
+    pub client_id: String,
+    pub hide_version: bool,
 }
 
 impl DawStatus {
-    pub(crate) fn cpu_usage_str(&self) -> String {
+    pub fn cpu_usage_str(&self) -> String {
         if self.is_running {
             format!("{:.2}%", self.cpu_usage)
         } else {
@@ -24,7 +24,7 @@ impl DawStatus {
         }
     }
 
-    pub(crate) fn ram_usage_str(&self) -> String {
+    pub fn ram_usage_str(&self) -> String {
         if self.is_running {
             if self.memory_mb >= 1024 {
                 format!("{:.2}GB", self.memory_mb as f64 / 1024.0)
@@ -38,5 +38,5 @@ impl DawStatus {
 }
 
 #[cfg(test)]
-#[path = "tests/status.rs"]
+#[path = "../../tests/rust/daw/status.rs"]
 mod tests;

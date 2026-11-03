@@ -10,17 +10,17 @@ const MAX_UPDATE_INTERVAL: u64 = 100_000_000;
 /// User preferences persisted via confy
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct AppSettings {
+pub struct AppSettings {
     #[serde(default)]
-    pub(crate) hide_project_name: bool,
+    pub hide_project_name: bool,
     #[serde(default)]
-    pub(crate) hide_system_usage: bool,
+    pub hide_system_usage: bool,
     #[serde(default = "default_true")]
-    pub(crate) close_to_tray: bool,
+    pub close_to_tray: bool,
     #[serde(default = "default_true")]
-    pub(crate) was_hidden: bool,
+    pub was_hidden: bool,
     #[serde(default = "default_update_interval")]
-    pub(crate) update_interval: u64,
+    pub update_interval: u64,
 }
 
 const fn default_true() -> bool {
@@ -44,28 +44,28 @@ impl Default for AppSettings {
 }
 
 impl AppSettings {
-    pub(crate) const fn should_start_hidden(&self, is_autostart_launch: bool) -> bool {
+    pub const fn should_start_hidden(&self, is_autostart_launch: bool) -> bool {
         is_autostart_launch && self.was_hidden
     }
 
-    pub(crate) fn load() -> Self {
+    pub fn load() -> Self {
         confy::load("dawpresence", None).unwrap_or_else(|error| {
             tracing::warn!("Couldn't load settings, using defaults: {error}");
             Self::default()
         })
     }
 
-    pub(crate) fn save(&self) -> Result<(), ConfigError> {
+    pub fn save(&self) -> Result<(), ConfigError> {
         confy::store("dawpresence", None, self).map_err(|e| ConfigError::SaveFailed(e.to_string()))
     }
 
-    pub(crate) fn set_update_interval(&mut self, interval: u64) -> Result<(), ConfigError> {
+    pub fn set_update_interval(&mut self, interval: u64) -> Result<(), ConfigError> {
         Self::validate_update_interval(interval)?;
         self.update_interval = interval;
         Ok(())
     }
 
-    pub(crate) fn validate_update_interval(interval: u64) -> Result<(), ConfigError> {
+    pub fn validate_update_interval(interval: u64) -> Result<(), ConfigError> {
         if !(MIN_UPDATE_INTERVAL..=MAX_UPDATE_INTERVAL).contains(&interval) {
             return Err(ConfigError::InvalidInterval {
                 min: MIN_UPDATE_INTERVAL,
@@ -78,5 +78,5 @@ impl AppSettings {
 }
 
 #[cfg(test)]
-#[path = "tests/settings.rs"]
+#[path = "../tests/rust/settings.rs"]
 mod tests;

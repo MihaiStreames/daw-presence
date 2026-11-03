@@ -9,14 +9,14 @@ use discord_rich_presence::DiscordIpc as _;
 use discord_rich_presence::DiscordIpcClient;
 use discord_rich_presence::activity;
 use presence::DiscordPresence;
-pub(crate) use presence::PresenceRequest;
+pub use presence::PresenceRequest;
 use tracing::debug;
 use tracing::error;
 use tracing::info;
 use tracing::trace;
 use tracing::warn;
-pub(crate) use worker::DiscordSender;
-pub(crate) use worker::discord_subscription;
+pub use worker::DiscordSender;
+pub use worker::discord_subscription;
 
 use crate::error::DiscordError;
 

@@ -22,7 +22,7 @@ fn open_key(hive: HKEY, subkey: &str, access: u32) -> Option<OwnedKey> {
 }
 
 /// Check if a named value exists under the given key
-pub(crate) fn value_exists(hive: HKEY, subkey: &str, name: &str) -> bool {
+pub fn value_exists(hive: HKEY, subkey: &str, name: &str) -> bool {
     let Some(key) = open_key(hive, subkey, KEY_READ) else {
         return false;
     };
@@ -44,7 +44,7 @@ pub(crate) fn value_exists(hive: HKEY, subkey: &str, name: &str) -> bool {
 
 /// Read a [`REG_DWORD`] value. Returns `None` if the key/value is missing or the type is wrong
 #[expect(dead_code)]
-pub(crate) fn read_dword(hive: HKEY, subkey: &str, name: &str) -> Option<u32> {
+pub fn read_dword(hive: HKEY, subkey: &str, name: &str) -> Option<u32> {
     let key = open_key(hive, subkey, KEY_READ)?;
     let name = to_wide_null(name);
 
@@ -66,7 +66,7 @@ pub(crate) fn read_dword(hive: HKEY, subkey: &str, name: &str) -> Option<u32> {
 }
 
 /// Write a [`REG_SZ`] (string) value. Returns `false` if the key cannot be opened or write fails
-pub(crate) fn set_sz(hive: HKEY, subkey: &str, name: &str, value: &str) -> bool {
+pub fn set_sz(hive: HKEY, subkey: &str, name: &str, value: &str) -> bool {
     let Some(key) = open_key(hive, subkey, KEY_WRITE) else {
         return false;
     };
@@ -80,7 +80,7 @@ pub(crate) fn set_sz(hive: HKEY, subkey: &str, name: &str, value: &str) -> bool 
 }
 
 /// Delete a named value. No-op if the key or value does not exist
-pub(crate) fn delete_value(hive: HKEY, subkey: &str, name: &str) {
+pub fn delete_value(hive: HKEY, subkey: &str, name: &str) {
     let Some(key) = open_key(hive, subkey, KEY_WRITE) else {
         return;
     };

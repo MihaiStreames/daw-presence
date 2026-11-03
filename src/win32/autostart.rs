@@ -14,14 +14,14 @@ const LEGACY_AUTOSTART_FLAG: &str = "--minimized"; // versions before 3.0.5
 // users skipping straight past would only see the window open on boot
 
 /// Check if the app was launched by the Run key rather than by the user
-pub(crate) fn is_autostart_launch() -> bool {
+pub fn is_autostart_launch() -> bool {
     std::env::args().any(|argument| argument == AUTOSTART_FLAG || argument == LEGACY_AUTOSTART_FLAG)
 }
 
 /// Rewrite a Run key that still launches with the pre-3.0.5 flag
 ///
 /// Only acts when the key still exists, so a manual `--minimized` launch never enables autostart
-pub(crate) fn migrate_legacy_run_key() {
+pub fn migrate_legacy_run_key() {
     if !std::env::args().any(|argument| argument == LEGACY_AUTOSTART_FLAG) {
         return;
     }
@@ -35,14 +35,14 @@ pub(crate) fn migrate_legacy_run_key() {
 }
 
 /// Check if auto-start is enabled by reading the HKCU Run key
-pub(crate) fn is_enabled() -> bool {
+pub fn is_enabled() -> bool {
     let exists = registry::value_exists(HKEY_CURRENT_USER, RUN_SUBKEY, VALUE_NAME);
     trace!("Registry auto-start check: {exists}");
     exists
 }
 
 /// Enable or disable auto-start by writing/deleting the HKCU Run key
-pub(crate) fn set_enabled(enabled: bool) {
+pub fn set_enabled(enabled: bool) {
     if enabled {
         let Some(exe_path) = std::env::current_exe().ok() else {
             warn!("Couldn't determine executable path for auto-start");

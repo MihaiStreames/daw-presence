@@ -16,7 +16,7 @@ struct DawConfigFile {
 
 /// DAW configuration from `daws.json`
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct DawConfig {
+pub struct DawConfig {
     #[serde(rename = "ProcessName")]
     process_name: String,
     #[serde(rename = "DisplayText")]
@@ -34,7 +34,7 @@ pub(crate) struct DawConfig {
 }
 
 /// Load DAW configs from a JSON file
-pub(crate) fn load_configs(path: &Path) -> Result<Vec<DawConfig>, ConfigError> {
+pub fn load_configs(path: &Path) -> Result<Vec<DawConfig>, ConfigError> {
     let content = std::fs::read_to_string(path)?;
     let file: DawConfigFile = serde_json::from_str(&content)?;
     Ok(file.daws)
@@ -42,7 +42,7 @@ pub(crate) fn load_configs(path: &Path) -> Result<Vec<DawConfig>, ConfigError> {
 
 /// Ensure a bundled `daws.json` exists in the config directory or
 /// overwrite the local copy only when the bundled version is newer
-pub(crate) fn ensure_daw_config() -> Result<PathBuf, ConfigError> {
+pub fn ensure_daw_config() -> Result<PathBuf, ConfigError> {
     let config_path =
         confy::get_configuration_file_path("dawpresence", None).map_err(|e| ConfigError::InitFailed(e.to_string()))?;
     let config_dir = config_path.parent().ok_or(ConfigError::NoConfigDir)?;
@@ -132,5 +132,5 @@ pub(super) fn normalize_process_name(name: &str) -> String {
 }
 
 #[cfg(test)]
-#[path = "tests/config.rs"]
+#[path = "../../tests/rust/daw/config.rs"]
 mod tests;

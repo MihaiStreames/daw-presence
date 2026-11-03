@@ -13,7 +13,7 @@ use crossbeam_channel::RecvTimeoutError;
 use iced::Subscription;
 use iced::futures::channel::mpsc::Sender;
 use iced::futures::future;
-pub(crate) use icon::load_window_icon;
+pub use icon::load_window_icon;
 use tracing::debug;
 use tracing::warn;
 use tray_icon::menu::MenuEvent;
@@ -30,19 +30,19 @@ static TRAY_UPDATES: LazyLock<(mpsc::Sender<TrayUpdate>, Mutex<mpsc::Receiver<Tr
 });
 
 /// State changes pushed from the app thread to the tray thread
-pub(crate) enum TrayUpdate {
+pub enum TrayUpdate {
     HideProjectName(bool),
     HideSystemUsage(bool),
     DiscordConnected(bool),
 }
 
 /// Send a tray update to modify the tray menu
-pub(crate) fn send_tray_update(update: TrayUpdate) {
+pub fn send_tray_update(update: TrayUpdate) {
     let _ = TRAY_UPDATES.0.send(update);
 }
 
 /// Bridge tray menu events into the app
-pub(crate) fn tray_subscription() -> Subscription<Message> {
+pub fn tray_subscription() -> Subscription<Message> {
     Subscription::run(|| {
         iced::stream::channel::<Message>(100, |output: Sender<Message>| async move {
             let shutdown = Arc::new(AtomicBool::new(false));

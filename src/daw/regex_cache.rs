@@ -70,5 +70,5 @@ impl RegexCache {
 }
 
 #[cfg(test)]
-#[path = "tests/regex_cache.rs"]
+#[path = "../../tests/rust/daw/regex_cache.rs"]
 mod tests;

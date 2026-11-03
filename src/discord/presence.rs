@@ -6,14 +6,14 @@ use crate::settings::AppSettings;
 
 /// Presence update for the Discord worker, with privacy settings already applied
 #[derive(Debug)]
-pub(crate) struct PresenceRequest {
+pub struct PresenceRequest {
     pub(super) client_id: String,
     pub(super) presence: DiscordPresence,
 }
 
 impl PresenceRequest {
     /// Build a request from current DAW status
-    pub(crate) fn from_daw_status(daw_status: &DawStatus, settings: &AppSettings) -> Self {
+    pub fn from_daw_status(daw_status: &DawStatus, settings: &AppSettings) -> Self {
         Self {
             client_id: daw_status.client_id.clone(),
             presence: DiscordPresence::from_daw_status(daw_status, settings),
@@ -69,5 +69,5 @@ impl DiscordPresence {
 }
 
 #[cfg(test)]
-#[path = "tests/presence.rs"]
+#[path = "../../tests/rust/discord/presence.rs"]
 mod tests;

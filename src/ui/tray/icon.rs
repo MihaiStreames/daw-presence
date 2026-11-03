@@ -48,7 +48,7 @@ pub(super) fn load_tray_icon(connected: bool) -> Result<Icon, TrayError> {
 }
 
 /// Load window icon from cached RGBA
-pub(crate) fn load_window_icon() -> Result<window::Icon, TrayError> {
+pub fn load_window_icon() -> Result<window::Icon, TrayError> {
     static MAIN_RGBA: LazyLock<(Vec<u8>, u32, u32)> = LazyLock::new(|| decode_icon(ICON_MAIN_DATA));
     let (rgba, w, h) = &*MAIN_RGBA;
     window::icon::from_rgba(rgba.clone(), *w, *h).map_err(|e| TrayError::IconFailed(e.to_string()))

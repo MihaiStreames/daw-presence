@@ -22,13 +22,13 @@ const EVENT_NAME: &str = "Local\\DAWPresence-SingleInstance";
 static SHOW_RECEIVER: LazyLock<Mutex<Option<mpsc::Receiver<()>>>> = LazyLock::new(|| Mutex::new(None));
 static EVENT_HANDLE: OnceLock<OwnedHandle> = OnceLock::new();
 
-pub(crate) fn take_receiver() -> Option<mpsc::Receiver<()>> {
+pub fn take_receiver() -> Option<mpsc::Receiver<()>> {
     SHOW_RECEIVER.lock().ok()?.take()
 }
 
 /// Acquires the single-instance lock. If another instance is already running,
 /// signals it to show its window and returns `false`. Returns `true` otherwise
-pub(crate) fn acquire() -> bool {
+pub fn acquire() -> bool {
     let event_name = to_wide_null(EVENT_NAME);
 
     // auto-reset: OS atomically wakes one waiter and clears the event, no lost-wakeup race

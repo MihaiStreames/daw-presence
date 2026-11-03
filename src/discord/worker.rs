@@ -15,11 +15,11 @@ use crate::state::Message;
 ///
 /// `None` means no DAW is running, so the worker disconnects
 #[derive(Debug, Clone)]
-pub(crate) struct DiscordSender(mpsc::Sender<Option<PresenceRequest>>);
+pub struct DiscordSender(mpsc::Sender<Option<PresenceRequest>>);
 
 impl DiscordSender {
     /// Queue a presence request; returns `false` once the worker has exited
-    pub(crate) fn send(&self, request: Option<PresenceRequest>) -> bool {
+    pub fn send(&self, request: Option<PresenceRequest>) -> bool {
         if self.0.send(request).is_err() {
             warn!("Discord worker stopped, presence updates disabled");
             return false;
@@ -30,7 +30,7 @@ impl DiscordSender {
 }
 
 /// Spawn the Discord worker thread and hand its sender to the app
-pub(crate) fn discord_subscription() -> Subscription<Message> {
+pub fn discord_subscription() -> Subscription<Message> {
     Subscription::run(|| {
         iced::stream::channel(100, |mut output: Sender<Message>| async move {
             let (sender, receiver) = mpsc::channel();

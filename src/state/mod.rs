@@ -22,7 +22,7 @@ use crate::win32::autostart;
 use crate::win32::single_instance;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub(crate) enum Page {
+pub enum Page {
     #[default]
     Home,
     Settings,
@@ -30,7 +30,7 @@ pub(crate) enum Page {
 
 /// Events flowing through the Iced update loop
 #[derive(Debug, Clone)]
-pub(crate) enum Message {
+pub enum Message {
     CloseRequested(window::Id),
     WindowOpened(window::Id),
     TrayShow,
@@ -49,16 +49,16 @@ pub(crate) enum Message {
 
 /// Root application state for the Iced MVU loop
 #[allow(clippy::struct_excessive_bools)]
-pub(crate) struct AppState {
-    pub(crate) settings: AppSettings,
-    pub(crate) active_page: Page,
-    pub(crate) update_interval_input: String,
-    pub(crate) update_interval_error: Option<String>,
-    pub(crate) interval_applied: bool,
-    pub(crate) daw_status: Option<DawStatus>,
-    pub(crate) discord_connected: bool,
-    pub(crate) auto_start_enabled: bool,
-    pub(crate) start_hidden: bool,
+pub struct AppState {
+    pub settings: AppSettings,
+    pub active_page: Page,
+    pub update_interval_input: String,
+    pub update_interval_error: Option<String>,
+    pub interval_applied: bool,
+    pub daw_status: Option<DawStatus>,
+    pub discord_connected: bool,
+    pub auto_start_enabled: bool,
+    pub start_hidden: bool,
     window_id: Option<window::Id>,
     daw_scanner: Option<DawScanner>,
     discord: Option<DiscordSender>,
@@ -73,7 +73,7 @@ fn save_or_warn(settings: &AppSettings) {
 /// Initialize application state:
 /// 1. Ensure `daws.json`
 /// 2. Create [`DawScanner`]
-pub(crate) fn boot(settings: AppSettings, start_hidden: bool) -> (AppState, Task<Message>) {
+pub fn boot(settings: AppSettings, start_hidden: bool) -> (AppState, Task<Message>) {
     let config_path = match ensure_daw_config() {
         Ok(path) => Some(path),
         Err(error) => {
@@ -112,7 +112,7 @@ pub(crate) fn boot(settings: AppSettings, start_hidden: bool) -> (AppState, Task
 }
 
 /// Dispatch messages to handlers
-pub(crate) fn update(state: &mut AppState, message: Message) -> Task<Message> {
+pub fn update(state: &mut AppState, message: Message) -> Task<Message> {
     match message {
         Message::CloseRequested(id) => handlers::close_requested(state, id),
         Message::WindowOpened(id) => handlers::window_opened(state, id),
@@ -132,7 +132,7 @@ pub(crate) fn update(state: &mut AppState, message: Message) -> Task<Message> {
 }
 
 /// Subscribe to the main state changing subscriptions
-pub(crate) fn subscription(state: &AppState) -> Subscription<Message> {
+pub fn subscription(state: &AppState) -> Subscription<Message> {
     let tick = time::every(Duration::from_millis(state.settings.update_interval)).map(|_| Message::Tick);
 
     Subscription::batch(vec![
