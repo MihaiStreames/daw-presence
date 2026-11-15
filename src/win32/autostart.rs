@@ -10,8 +10,7 @@ const VALUE_NAME: &str = "DAWPresence";
 const AUTOSTART_FLAG: &str = "--autostart";
 const LEGACY_AUTOSTART_FLAG: &str = "--minimized"; // versions before 3.0.5
 
-// TODO: drop LEGACY_AUTOSTART_FLAG a few releases after 3.0.6
-// users skipping straight past would only see the window open on boot
+// TODO: drop LEGACY_AUTOSTART_FLAG in 3.1.0
 
 /// Check if the app was launched by the Run key rather than by the user
 pub fn is_autostart_launch() -> bool {
@@ -52,6 +51,7 @@ pub fn set_enabled(enabled: bool) {
         // the flag lets startup apply the start in tray setting only to autostart launches
         let value = format!("\"{}\" {AUTOSTART_FLAG}", exe_path.display());
         trace!("Writing auto-start registry key: {value}");
+
         if !registry::set_sz(HKEY_CURRENT_USER, RUN_SUBKEY, VALUE_NAME, &value) {
             warn!("Couldn't write auto-start registry value");
         }

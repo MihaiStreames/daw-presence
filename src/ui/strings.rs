@@ -31,6 +31,7 @@ pub(super) const STATUS: &str = "Status";
 pub(super) const NO_DAW_DETECTED: &str = "No DAW detected";
 pub(super) const NO_PROJECT_OPEN: &str = "No project open";
 pub(super) const PROJECT_HIDDEN: &str = "(hidden)";
+pub(super) const PROJECT_UNTITLED: &str = "Untitled";
 
 pub(super) const CARD_DAW: &str = "DAW";
 pub(super) const CARD_PROJECT: &str = "Project";

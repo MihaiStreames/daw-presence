@@ -37,7 +37,7 @@ fn main() -> iced::Result {
         return Ok(());
     }
 
-    // TODO: remove after v3.0.6
+    // TODO: remove in 3.1.0
     migrate_legacy_run_key();
 
     let settings = AppSettings::load();
@@ -52,6 +52,12 @@ fn main() -> iced::Result {
             resizable: false,
             icon: window_icon,
             size: Size::new(784.0, 340.0),
+            decorations: false,
+            platform_specific: window::settings::PlatformSpecific {
+                undecorated_shadow: true,
+                corner_preference: window::settings::platform::CornerPreference::Round,
+                ..window::settings::PlatformSpecific::default()
+            },
             exit_on_close_request: false,
             ..window::Settings::default()
         })

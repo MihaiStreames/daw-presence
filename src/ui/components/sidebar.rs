@@ -1,4 +1,5 @@
 use iced::Length;
+use iced::padding;
 use iced::widget::column;
 use iced::widget::container;
 use iced::widget::container::Style;
@@ -21,18 +22,11 @@ pub(in crate::ui) fn sidebar(state: &AppState) -> iced::Element<'_, Message> {
     container(items)
         .width(Length::Fixed(style::SIDEBAR_WIDTH))
         .height(Length::Fill)
-        .padding(iced::Padding {
-            top: style::PADDING_PAGE,
-            right: 0.0,
-            bottom: 0.0,
-            left: 0.0,
-        })
+        .padding(padding::top(style::TITLE_BAR_HEIGHT))
         .style(sidebar_bg)
         .into()
 }
 
 fn sidebar_bg(theme: &iced::Theme) -> Style {
-    let bg = theme.palette().background;
-    let darker = iced::Color::from_rgb((bg.r * 0.85).max(0.0), (bg.g * 0.85).max(0.0), (bg.b * 0.85).max(0.0));
-    Style::default().background(iced::Background::Color(darker))
+    Style::default().background(iced::Background::Color(style::colors(theme).background_sunken))
 }

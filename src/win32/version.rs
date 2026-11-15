@@ -7,26 +7,20 @@ use windows_sys::Win32::Storage::FileSystem::GetFileVersionInfoW;
 use windows_sys::Win32::Storage::FileSystem::VerQueryValueW;
 
 use super::to_wide_null;
-use crate::daw::UNKNOWN_VERSION;
 
 const QUERY: &str = "\\VarFileInfo\\Translation";
+const PLACEHOLDER_VERSION: &str = "0.0.0";
 
 /// Read the `ProductVersion` string from a PE file's version resource,
-/// returning [`UNKNOWN_VERSION`] if the version cannot be read
-pub fn exe_version(path: &Path) -> String {
+/// or `None` if there isn't a real one to read
+pub fn exe_version(path: &Path) -> Option<String> {
     let path_wide: Vec<u16> = path.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
 
-    let Some(data) = load_version_info(&path_wide) else {
-        return UNKNOWN_VERSION.to_owned();
-    };
-
+    let data = load_version_info(&path_wide)?;
     let data_range = data.as_ptr() as usize..data.as_ptr() as usize + data.len();
+    let (lang, codepage) = parse_translation(&data, &data_range)?;
 
-    let Some((lang, codepage)) = parse_translation(&data, &data_range) else {
-        return UNKNOWN_VERSION.to_owned();
-    };
-
-    query_version_string(&data, &data_range, lang, codepage).unwrap_or_else(|| UNKNOWN_VERSION.to_owned())
+    query_version_string(&data, &data_range, lang, codepage).filter(|version| version != PLACEHOLDER_VERSION)
 }
 
 fn load_version_info(path_wide: &[u16]) -> Option<Vec<u8>> {

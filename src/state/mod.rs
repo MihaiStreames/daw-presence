@@ -14,6 +14,7 @@ use tracing::warn;
 use crate::daw::DawScanner;
 use crate::daw::DawStatus;
 use crate::daw::ensure_daw_config;
+use crate::daw::load_configs;
 use crate::discord::DiscordSender;
 use crate::discord::discord_subscription;
 use crate::settings::AppSettings;
@@ -33,6 +34,9 @@ pub enum Page {
 pub enum Message {
     CloseRequested(window::Id),
     WindowOpened(window::Id),
+    DragWindow,
+    MinimizeWindow,
+    CloseWindow,
     TrayShow,
     TrayQuit,
     NavigateTo(Page),
@@ -47,20 +51,27 @@ pub enum Message {
     DiscordConnected(bool),
 }
 
+/// What the update interval field holds compared to the saved setting
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum IntervalDraft {
+    #[default]
+    Unchanged,
+    Valid(u64),
+    Invalid(String),
+    Applied,
+}
+
 /// Root application state for the Iced MVU loop
-#[allow(clippy::struct_excessive_bools)]
 pub struct AppState {
     pub settings: AppSettings,
     pub active_page: Page,
-    pub update_interval_input: String,
-    pub update_interval_error: Option<String>,
-    pub interval_applied: bool,
+    pub interval_input: String,
+    pub interval_draft: IntervalDraft,
     pub daw_status: Option<DawStatus>,
     pub discord_connected: bool,
     pub auto_start_enabled: bool,
-    pub start_hidden: bool,
-    window_id: Option<window::Id>,
-    daw_scanner: Option<DawScanner>,
+    start_hidden: bool,
+    daw_scanner: DawScanner,
     discord: Option<DiscordSender>,
 }
 
@@ -74,37 +85,24 @@ fn save_or_warn(settings: &AppSettings) {
 /// 1. Ensure `daws.json`
 /// 2. Create [`DawScanner`]
 pub fn boot(settings: AppSettings, start_hidden: bool) -> (AppState, Task<Message>) {
-    let config_path = match ensure_daw_config() {
-        Ok(path) => Some(path),
-        Err(error) => {
-            warn!("Couldn't initialize daws.json: {error}");
-            None
-        }
-    };
-
-    let auto_start_enabled = autostart::is_enabled();
-    let update_interval_input = settings.update_interval.to_string();
-
-    let daw_scanner = config_path.and_then(|path| {
-        crate::daw::load_configs(&path)
-            .map(DawScanner::new)
-            .map_err(|error| warn!("Couldn't load daws.json: {error}"))
-            .ok()
-    });
+    let configs = ensure_daw_config()
+        .and_then(|path| load_configs(&path))
+        .unwrap_or_else(|error| {
+            warn!("Couldn't load daws.json: {error}");
+            Vec::new()
+        });
 
     (
         AppState {
+            interval_input: settings.update_interval.to_string(),
+            interval_draft: IntervalDraft::Unchanged,
             settings,
             active_page: Page::Home,
-            update_interval_input,
-            update_interval_error: None,
-            interval_applied: false,
             daw_status: None,
             discord_connected: false,
-            auto_start_enabled,
+            auto_start_enabled: autostart::is_enabled(),
             start_hidden,
-            window_id: None,
-            daw_scanner,
+            daw_scanner: DawScanner::new(configs),
             discord: None,
         },
         Task::none(),
@@ -116,8 +114,11 @@ pub fn update(state: &mut AppState, message: Message) -> Task<Message> {
     match message {
         Message::CloseRequested(id) => handlers::close_requested(state, id),
         Message::WindowOpened(id) => handlers::window_opened(state, id),
+        Message::DragWindow => handlers::drag_window(),
+        Message::MinimizeWindow => handlers::minimize_window(),
+        Message::CloseWindow => handlers::close_window(),
         Message::TrayShow => handlers::tray_show(state),
-        Message::TrayQuit => handlers::tray_quit(state.window_id),
+        Message::TrayQuit => handlers::tray_quit(),
         Message::NavigateTo(page) => handlers::navigate_to(state, page),
         Message::ToggleAutoStart(value) => handlers::toggle_auto_start(state, value),
         Message::ToggleCloseToTray(value) => handlers::toggle_close_to_tray(state, value),

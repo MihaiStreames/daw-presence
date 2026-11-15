@@ -2,6 +2,17 @@
 
 All notable changes to DAWPresence.
 
+## [3.0.7] - 2026-11-15
+
+### Added
+
+- The app now follows your Windows light/dark setting instead of always being dark (#37)
+- Built-in title bar that blends into the app
+
+### Changed
+
+- Refreshed look
+
 ## [3.0.6] - 2026-11-03
 
 ### Fixed
