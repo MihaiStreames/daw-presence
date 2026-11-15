@@ -1,4 +1,6 @@
+use iced::Background;
 use iced::Length;
+use iced::widget::Space;
 use iced::widget::button;
 use iced::widget::container;
 use iced::widget::container::Style;
@@ -12,72 +14,55 @@ use crate::ui::style;
 pub(in crate::ui) fn sidebar_item(label: &'static str, page: Page, active: Page) -> iced::Element<'static, Message> {
     let is_active = page == active;
 
-    let accent = container(text(""))
+    let accent_bar = container(Space::new())
         .width(Length::Fixed(style::SIDEBAR_ACCENT_WIDTH))
         .height(Length::Fill)
-        .style(move |_theme: &iced::Theme| {
+        .style(move |theme: &iced::Theme| {
             if is_active {
-                Style::default().background(iced::Background::Color(style::COLOR_ACCENT))
+                Style::default().background(style::colors(theme).accent)
             } else {
                 Style::default()
             }
         });
 
-    let item_style = if is_active {
-        item_active_style as fn(&iced::Theme) -> Style
-    } else {
-        item_inactive_style
-    };
-
     let label = container(text(label).size(style::TEXT_LABEL))
-        .padding(style::SIDEBAR_ITEM_PADDING)
-        .width(Length::Fill)
-        .style(item_style);
+        .padding(iced::Padding {
+            top: style::SIDEBAR_ITEM_PADDING - style::SIDEBAR_TEXT_NUDGE,
+            right: style::SIDEBAR_ITEM_PADDING,
+            bottom: style::SIDEBAR_ITEM_PADDING + style::SIDEBAR_TEXT_NUDGE,
+            left: style::SIDEBAR_ITEM_PADDING,
+        })
+        .width(Length::Fill);
 
-    let content = row(vec![accent.into(), label.into()]).height(Length::Shrink);
+    // the fill-height accent bar would otherwise stretch the row, and the item, to the whole sidebar
+    let content = row(vec![accent_bar.into(), label.into()]).height(Length::Shrink);
+
     button(content)
         .padding(0)
         .on_press(Message::NavigateTo(page))
-        .style(move |_theme, status| {
+        .style(move |theme, status| {
+            let colors = style::colors(theme);
             let is_hovered = matches!(status, button::Status::Hovered);
 
-            let is_pressed = matches!(status, button::Status::Pressed);
-
-            let text_color = if is_active || is_hovered {
-                iced::Color::WHITE
-            } else {
-                style::COLOR_TEXT_DIM
-            };
-
-            let bg = if is_active {
-                if is_hovered {
-                    Some(iced::Background::Color(style::COLOR_SURFACE_HOVER))
-                } else {
-                    None
-                }
-            } else if is_pressed {
-                Some(iced::Background::Color(style::COLOR_SURFACE))
+            let background = if is_active {
+                Some(colors.background_selected)
+            } else if matches!(status, button::Status::Pressed) {
+                Some(colors.control)
             } else if is_hovered {
-                Some(iced::Background::Color(style::COLOR_SURFACE_HOVER))
+                Some(colors.control_hover)
             } else {
                 None
             };
 
             button::Style {
-                background: bg,
-                text_color,
+                background: background.map(Background::Color),
+                text_color: if is_active || is_hovered {
+                    theme.palette().text
+                } else {
+                    colors.text_muted
+                },
                 ..button::Style::default()
             }
         })
         .into()
-}
-
-fn item_active_style(theme: &iced::Theme) -> Style {
-    let bg = theme.palette().background;
-    let lighter = iced::Color::from_rgb((bg.r * 1.3).min(1.0), (bg.g * 1.3).min(1.0), (bg.b * 1.3).min(1.0));
-    Style::default().background(iced::Background::Color(lighter))
-}
-
-fn item_inactive_style(_theme: &iced::Theme) -> Style {
-    Style::default()
 }

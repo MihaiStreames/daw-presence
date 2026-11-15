@@ -40,10 +40,3 @@ fn validate_interval_rejects_out_of_bounds() {
     assert!(AppSettings::validate_update_interval(MIN_UPDATE_INTERVAL - 1).is_err());
     assert!(AppSettings::validate_update_interval(MAX_UPDATE_INTERVAL + 1).is_err());
 }
-
-#[test]
-fn set_interval_keeps_previous_value_on_error() {
-    let mut settings = AppSettings::default();
-    assert!(settings.set_update_interval(100).is_err());
-    assert_eq!(settings.update_interval, DEFAULT_UPDATE_INTERVAL);
-}

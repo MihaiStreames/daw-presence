@@ -1,13 +1,14 @@
 use std::path::Path;
 use std::path::PathBuf;
+use std::rc::Rc;
 
 use serde::Deserialize;
 use serde::Serialize;
 use tracing::debug;
 
+use super::title::TitlePattern;
 use crate::error::ConfigError;
 
-/// Versioned wrapper for `daws.json`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct DawConfigFile {
     version: u32,
@@ -71,29 +72,32 @@ pub fn ensure_daw_config() -> Result<PathBuf, ConfigError> {
 
 /// Pre-normalized DAW config (for fast matching during scanning)
 pub(super) struct NormalizedConfig {
-    config: DawConfig,
+    display_text: String,
+    client_id: String,
+    hide_version: bool,
+    title: TitlePattern,
     normalized_name: String,
     additional_prefixes: Vec<String>,
 }
 
 impl NormalizedConfig {
-    pub(super) fn from_configs(configs: Vec<DawConfig>) -> Vec<Self> {
+    /// Shared so an attached DAW can hold on to its config
+    pub(super) fn from_configs(configs: Vec<DawConfig>) -> Vec<Rc<Self>> {
         configs
             .into_iter()
             .map(|config| {
-                let normalized_name = normalize_process_name(&config.process_name);
-
-                let additional_prefixes = config
-                    .additional_process_names
-                    .iter()
-                    .map(|n| normalize_process_name(n))
-                    .collect();
-
-                Self {
-                    config,
-                    normalized_name,
-                    additional_prefixes,
-                }
+                Rc::new(Self {
+                    normalized_name: normalize_process_name(&config.process_name),
+                    additional_prefixes: config
+                        .additional_process_names
+                        .iter()
+                        .map(|name| normalize_process_name(name))
+                        .collect(),
+                    display_text: config.display_text,
+                    client_id: config.client_id,
+                    hide_version: config.hide_version,
+                    title: TitlePattern::new(config.title_regex),
+                })
             })
             .collect()
     }
@@ -109,19 +113,19 @@ impl NormalizedConfig {
     }
 
     pub(super) fn display_text(&self) -> &str {
-        &self.config.display_text
+        &self.display_text
     }
 
-    pub(super) fn title_regex(&self) -> &str {
-        &self.config.title_regex
+    pub(super) const fn title(&self) -> &TitlePattern {
+        &self.title
     }
 
     pub(super) fn client_id(&self) -> &str {
-        &self.config.client_id
+        &self.client_id
     }
 
     pub(super) const fn hide_version(&self) -> bool {
-        self.config.hide_version
+        self.hide_version
     }
 }
 

@@ -1,12 +1,14 @@
 mod components;
 mod pages;
 mod strings;
-pub mod style;
+mod style;
 pub mod tray;
 
 use iced::Length;
 use iced::widget::container;
+use iced::widget::mouse_area;
 use iced::widget::row;
+use iced::widget::stack;
 
 use crate::state::AppState;
 use crate::state::Message;
@@ -20,11 +22,17 @@ pub fn view(state: &AppState) -> iced::Element<'_, Message> {
     };
 
     let page = container(content)
-        .padding(style::PADDING_PAGE)
+        .padding(iced::Padding {
+            top: style::TITLE_BAR_HEIGHT,
+            ..iced::Padding::new(style::PADDING_PAGE)
+        })
         .width(Length::Fill)
         .height(Length::Fill);
 
-    row(vec![components::sidebar(state), page.into()])
+    let sidebar = mouse_area(components::sidebar(state)).on_press(Message::DragWindow);
+    let page = stack(vec![page.into(), components::title_bar()]);
+
+    row(vec![sidebar.into(), page.into()])
         .width(Length::Fill)
         .height(Length::Fill)
         .into()

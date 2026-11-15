@@ -1,9 +1,11 @@
+use iced::padding;
 use iced::widget::column;
 use iced::widget::container;
 use iced::widget::scrollable;
 use iced::widget::text;
 
 use crate::state::AppState;
+use crate::state::IntervalDraft;
 use crate::state::Message;
 use crate::ui::components;
 use crate::ui::strings;
@@ -44,27 +46,21 @@ pub(in crate::ui) fn settings_view(state: &AppState) -> iced::Element<'_, Messag
     ])
     .spacing(style::SPACING_TIGHT);
 
-    scrollable(container(content).padding(iced::Padding {
-        top: 0.0,
-        right: style::SPACING,
-        bottom: 0.0,
-        left: 0.0,
-    }))
-    .style(components::scrollable_style)
-    .into()
+    scrollable(container(content).padding(padding::right(style::SPACING)))
+        .style(components::scrollable_style)
+        .into()
 }
 
 fn interval_editor(state: &AppState) -> iced::Element<'_, Message> {
-    let has_changes = state.update_interval_input != state.settings.update_interval.to_string();
-    let can_apply = state.update_interval_error.is_none() && has_changes;
-
-    let (description, color) = if let Some(error) = &state.update_interval_error {
-        (error.as_str(), style::COLOR_ERROR)
-    } else if state.interval_applied {
-        (strings::APPLIED, style::COLOR_ACCENT)
-    } else {
-        (strings::UPDATE_INTERVAL_DESC, style::COLOR_TEXT_DIM)
+    let (description, color): (&str, style::ColorRole) = match &state.interval_draft {
+        IntervalDraft::Invalid(error) => (error.as_str(), |colors| colors.danger),
+        IntervalDraft::Applied => (strings::APPLIED, |colors| colors.accent),
+        IntervalDraft::Unchanged | IntervalDraft::Valid(_) => {
+            (strings::UPDATE_INTERVAL_DESC, |colors| colors.text_muted)
+        }
     };
+
+    let can_apply = matches!(state.interval_draft, IntervalDraft::Valid(_));
 
     components::labeled_input(
         components::InputProps {
@@ -72,7 +68,7 @@ fn interval_editor(state: &AppState) -> iced::Element<'_, Message> {
             description,
             description_color: color,
             placeholder: strings::UPDATE_INTERVAL_PLACEHOLDER,
-            value: &state.update_interval_input,
+            value: &state.interval_input,
             button_label: strings::APPLY,
             on_submit: can_apply.then_some(Message::ApplyInterval),
         },

@@ -9,7 +9,9 @@ use crate::state::Message;
 use crate::ui::style;
 
 pub(in crate::ui) fn stat_card(title: &'static str, value: String) -> iced::Element<'static, Message> {
-    let label = text(title).size(style::TEXT_LABEL).color(style::COLOR_ACCENT);
+    let label = text(title)
+        .size(style::TEXT_LABEL)
+        .style(style::text_role(|colors| colors.accent));
     let value = text(value).size(style::TEXT_LABEL);
     let card = column(vec![label.into(), value.into()]).spacing(style::SPACING_TIGHT);
 
@@ -20,10 +22,12 @@ pub(in crate::ui) fn stat_card(title: &'static str, value: String) -> iced::Elem
         .into()
 }
 
-fn card_style(_theme: &iced::Theme) -> Style {
-    Style::default().border(Border {
-        color: style::COLOR_TEXT_DIM,
-        width: style::BORDER_WIDTH,
-        radius: style::BORDER_RADIUS_CARD.into(),
-    })
+fn card_style(theme: &iced::Theme) -> Style {
+    let colors = style::colors(theme);
+    Style::default()
+        .background(iced::Background::Color(colors.background_raised))
+        .border(Border {
+            radius: style::BORDER_RADIUS_CARD.into(),
+            ..Border::default()
+        })
 }

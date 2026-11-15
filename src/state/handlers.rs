@@ -3,10 +3,10 @@ use iced::window;
 use tracing::debug;
 
 use super::AppState;
+use super::IntervalDraft;
 use super::Message;
 use super::Page;
 use super::save_or_warn;
-use crate::daw::DawScanner;
 use crate::discord::DiscordSender;
 use crate::discord::PresenceRequest;
 use crate::settings::AppSettings;
@@ -34,35 +34,38 @@ pub(super) fn close_requested(state: &mut AppState, window_id: window::Id) -> Ta
     window::set_mode(window_id, window::Mode::Hidden)
 }
 
-pub(super) fn window_opened(state: &mut AppState, window_id: window::Id) -> Task<Message> {
-    state.window_id = Some(window_id);
-
+pub(super) fn window_opened(state: &AppState, window_id: window::Id) -> Task<Message> {
     if state.start_hidden {
-        remember_hidden(state, true);
         return window::set_mode(window_id, window::Mode::Hidden);
     }
 
     Task::none()
 }
 
-pub(super) fn tray_show(state: &mut AppState) -> Task<Message> {
-    let Some(id) = state.window_id else {
-        return Task::none();
-    };
-
-    remember_hidden(state, false);
-    Task::batch(vec![
-        window::set_mode(id, window::Mode::Windowed),
-        window::gain_focus(id),
-    ])
+pub(super) fn drag_window() -> Task<Message> {
+    window::latest().and_then(window::drag)
 }
 
-pub(super) fn tray_quit(window_id: Option<window::Id>) -> Task<Message> {
-    let Some(id) = window_id else {
-        return Task::none();
-    };
+pub(super) fn minimize_window() -> Task<Message> {
+    window::latest().and_then(|id| window::minimize(id, true))
+}
 
-    window::close(id)
+pub(super) fn close_window() -> Task<Message> {
+    window::latest().and_then(|id| Task::done(Message::CloseRequested(id)))
+}
+
+pub(super) fn tray_show(state: &mut AppState) -> Task<Message> {
+    remember_hidden(state, false);
+    window::latest().and_then(|id| {
+        Task::batch(vec![
+            window::set_mode(id, window::Mode::Windowed),
+            window::gain_focus(id),
+        ])
+    })
+}
+
+pub(super) fn tray_quit() -> Task<Message> {
+    window::latest().and_then(window::close)
 }
 
 pub(super) fn navigate_to(state: &mut AppState, page: Page) -> Task<Message> {
@@ -70,8 +73,8 @@ pub(super) fn navigate_to(state: &mut AppState, page: Page) -> Task<Message> {
     debug!("Navigated to {page:?}");
 
     if page == Page::Settings {
-        state.update_interval_input = state.settings.update_interval.to_string();
-        state.update_interval_error = None;
+        state.interval_input = state.settings.update_interval.to_string();
+        state.interval_draft = IntervalDraft::Unchanged;
     }
 
     Task::none()
@@ -109,46 +112,38 @@ pub(super) fn toggle_hide_system_usage(state: &mut AppState, value: bool) -> Tas
 }
 
 pub(super) fn update_interval_input(state: &mut AppState, value: &str) -> Task<Message> {
-    value.clone_into(&mut state.update_interval_input);
-    state.interval_applied = false;
+    value.clone_into(&mut state.interval_input);
 
-    if value.trim().is_empty() {
-        state.update_interval_error = Some(INTERVAL_PARSE_ERROR.to_owned());
-    } else if let Ok(interval) = value.parse::<u64>() {
-        match AppSettings::validate_update_interval(interval) {
-            Ok(()) => state.update_interval_error = None,
-            Err(error) => state.update_interval_error = Some(error.to_string()),
-        }
-    } else {
-        state.update_interval_error = Some(INTERVAL_PARSE_ERROR.to_owned());
-    }
+    state.interval_draft = match value.parse::<u64>() {
+        Ok(interval) if interval == state.settings.update_interval => IntervalDraft::Unchanged,
+        Ok(interval) => match AppSettings::validate_update_interval(interval) {
+            Ok(()) => IntervalDraft::Valid(interval),
+            Err(error) => IntervalDraft::Invalid(error.to_string()),
+        },
+        Err(_) => IntervalDraft::Invalid(INTERVAL_PARSE_ERROR.to_owned()),
+    };
 
     Task::none()
 }
 
 pub(super) fn apply_interval(state: &mut AppState) -> Task<Message> {
-    let Ok(interval) = state.update_interval_input.parse::<u64>() else {
-        state.update_interval_error = Some(INTERVAL_PARSE_ERROR.to_owned());
+    let IntervalDraft::Valid(interval) = state.interval_draft else {
         return Task::none();
     };
 
-    if let Err(error) = state.settings.set_update_interval(interval) {
-        state.update_interval_error = Some(error.to_string());
-        return Task::none();
-    }
-
-    state.update_interval_error = None;
-    state.interval_applied = true;
+    state.settings.update_interval = interval;
+    state.interval_draft = IntervalDraft::Applied;
     debug!("Update interval applied: {interval}ms");
     save_or_warn(&state.settings);
     Task::none()
 }
 
 pub(super) fn tick(state: &mut AppState) -> Task<Message> {
-    state.interval_applied = false;
+    if state.interval_draft == IntervalDraft::Applied {
+        state.interval_draft = IntervalDraft::Unchanged;
+    }
 
-    let status = state.daw_scanner.as_mut().and_then(DawScanner::poll);
-    state.daw_status = status;
+    state.daw_status = state.daw_scanner.poll();
 
     let Some(discord) = &state.discord else {
         return Task::none();

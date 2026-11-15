@@ -20,65 +20,27 @@ pub use worker::discord_subscription;
 
 use crate::error::DiscordError;
 
-/// Manages Discord IPC connection, reconnection, and presence updates
-///
-/// Owned solely by the Discord worker thread, so IPC never blocks the UI
-struct DiscordManager {
-    client: Option<DiscordIpcClient>,
-    client_id: Option<String>,
-    start_timestamp: Option<i64>,
+struct Connection {
+    client: DiscordIpcClient,
+    client_id: String,
+    started_at: i64,
 }
 
-impl DiscordManager {
-    const fn new() -> Self {
-        Self {
-            client: None,
-            client_id: None,
-            start_timestamp: None,
-        }
-    }
-
-    const fn is_connected(&self) -> bool {
-        self.client.is_some()
-    }
-
-    /// Connect (or reconnect if client ID changed) to Discord IPC
-    fn connect(&mut self, client_id: &str) -> Result<(), DiscordError> {
-        if self.client.is_some() && self.client_id.as_deref() == Some(client_id) {
-            return Ok(());
-        }
-
-        if self.client_id.is_some() {
-            debug!("Client ID changed, reconnecting...");
-
-            if let Some(ref mut client) = self.client {
-                let _ = client.clear_activity();
-                let _ = client.close();
-            }
-
-            self.clear();
-        }
-
-        let mut new_client = DiscordIpcClient::new(client_id);
-        new_client.connect().map_err(|e| DiscordError::Connect(e.to_string()))?;
-
-        self.client = Some(new_client);
-        self.client_id = Some(client_id.to_owned());
-        self.start_timestamp = Some(current_timestamp());
+impl Connection {
+    fn open(client_id: &str) -> Result<Self, DiscordError> {
+        let mut client = DiscordIpcClient::new(client_id);
+        client.connect().map_err(|e| DiscordError::Connect(e.to_string()))?;
 
         info!("Connected to Discord RPC");
 
-        Ok(())
+        Ok(Self {
+            client,
+            client_id: client_id.to_owned(),
+            started_at: current_timestamp(),
+        })
     }
 
-    fn update_presence(&mut self, presence: &DiscordPresence) -> Result<(), DiscordError> {
-        let timestamp = self.start_timestamp.unwrap_or_else(current_timestamp);
-
-        let Some(ref mut client) = self.client else {
-            debug_assert!(false, "update_presence called with no client");
-            return Ok(());
-        };
-
+    fn set_presence(mut self, presence: &DiscordPresence) -> (Option<Self>, Result<(), DiscordError>) {
         let build_activity = || {
             activity::Activity::new()
                 .details(&presence.details)
@@ -88,69 +50,91 @@ impl DiscordManager {
                         .large_image(&presence.large_image)
                         .large_text(&presence.large_text),
                 )
-                .timestamps(activity::Timestamps::new().start(timestamp))
+                .timestamps(activity::Timestamps::new().start(self.started_at))
+        };
+
+        let Err(activity_error) = self.client.set_activity(build_activity()) else {
+            return (Some(self), Ok(()));
         };
 
         // retry once on connection failure
-        if let Err(e) = client.set_activity(build_activity()) {
-            warn!("Couldn't set activity: {e}, trying to reconnect...");
+        warn!("Couldn't set activity: {activity_error}, trying to reconnect...");
 
-            if let Err(reconnect_err) = client.reconnect() {
-                error!("Couldn't reconnect: {reconnect_err}");
+        if let Err(reconnect_error) = self.client.reconnect() {
+            error!("Couldn't reconnect: {reconnect_error}");
 
-                let _ = client.close();
+            let _ = self.client.close();
 
-                self.clear();
-
-                return Err(DiscordError::Reconnect {
-                    activity: e.to_string(),
-                    reconnect: reconnect_err.to_string(),
-                });
-            }
-
-            // push presence
-            client
-                .set_activity(build_activity())
-                .map_err(|e| DiscordError::Activity(e.to_string()))?;
-
-            info!("Reconnected to Discord RPC");
+            return (
+                None,
+                Err(DiscordError::Reconnect {
+                    activity: activity_error.to_string(),
+                    reconnect: reconnect_error.to_string(),
+                }),
+            );
         }
 
-        Ok(())
+        let result = self
+            .client
+            .set_activity(build_activity())
+            .map(|()| info!("Reconnected to Discord RPC"))
+            .map_err(|e| DiscordError::Activity(e.to_string()));
+
+        (Some(self), result)
     }
 
-    fn disconnect(&mut self) {
-        if let Some(ref mut client) = self.client {
-            let _ = client.clear_activity();
-            let _ = client.close();
-        }
-
-        self.clear();
+    fn close(mut self) {
+        let _ = self.client.clear_activity();
+        let _ = self.client.close();
 
         debug!("Disconnected from Discord RPC");
     }
+}
 
-    /// Push the requested presence, or disconnect when no DAW is running (`None`)
+struct DiscordManager {
+    connection: Option<Connection>,
+}
+
+impl DiscordManager {
+    const fn new() -> Self {
+        Self { connection: None }
+    }
+
+    const fn is_connected(&self) -> bool {
+        self.connection.is_some()
+    }
+
+    fn disconnect(&mut self) {
+        if let Some(connection) = self.connection.take() {
+            connection.close();
+        }
+    }
+
     fn apply_request(&mut self, request: Option<&PresenceRequest>) -> Result<(), DiscordError> {
         let Some(request) = request else {
-            if self.is_connected() {
-                self.disconnect();
-            }
+            self.disconnect();
             return Ok(());
         };
 
-        self.connect(&request.client_id)?;
-        self.update_presence(&request.presence)?;
+        let connection = match self.connection.take() {
+            Some(connection) if connection.client_id == request.client_id => connection,
+            stale => {
+                if let Some(connection) = stale {
+                    debug!("Client ID changed, reconnecting...");
+                    connection.close();
+                }
+
+                Connection::open(&request.client_id)?
+            }
+        };
+
+        let (connection, result) = connection.set_presence(&request.presence);
+        self.connection = connection;
+        result?;
 
         trace!("Presence updated: {}", request.presence.details);
 
         Ok(())
-    }
-
-    fn clear(&mut self) {
-        self.client = None;
-        self.client_id = None;
-        self.start_timestamp = None;
     }
 }
 

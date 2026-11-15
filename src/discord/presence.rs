@@ -1,7 +1,5 @@
 use crate::daw::DawStatus;
-use crate::daw::UNKNOWN_PROJECT;
-use crate::daw::UNKNOWN_VERSION;
-use crate::daw::UNTITLED_PROJECT;
+use crate::daw::Project;
 use crate::settings::AppSettings;
 
 /// Presence update for the Discord worker, with privacy settings already applied
@@ -33,16 +31,10 @@ pub(super) struct DiscordPresence {
 impl DiscordPresence {
     /// Build presence from current DAW status
     pub(super) fn from_daw_status(daw_status: &DawStatus, settings: &AppSettings) -> Self {
-        let project = if settings.hide_project_name {
-            "(hidden)".to_owned()
-        } else {
-            daw_status.project_name.clone()
-        };
-
-        let details = if project == UNKNOWN_PROJECT || project == UNTITLED_PROJECT {
-            "Opening an untitled project".to_owned()
-        } else {
-            format!("Opening project: {project}")
+        let details = match &daw_status.project {
+            _ if settings.hide_project_name => "Opening project: (hidden)".to_owned(),
+            Project::Named(name) => format!("Opening project: {name}"),
+            Project::Unknown | Project::Untitled => "Opening an untitled project".to_owned(),
         };
 
         let state = if settings.hide_system_usage {
@@ -50,8 +42,8 @@ impl DiscordPresence {
         } else {
             let mut parts = Vec::new();
 
-            if !daw_status.hide_version && daw_status.version != UNKNOWN_VERSION {
-                parts.push(format!("v{}", daw_status.version));
+            if let Some(version) = &daw_status.version {
+                parts.push(format!("v{version}"));
             }
 
             parts.push(format!("{} CPU", daw_status.cpu_usage_str()));

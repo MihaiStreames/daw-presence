@@ -65,8 +65,8 @@ On Linux:
 > You need `gcc-mingw-w64-x86-64`:
 >
 > ```sh
-> pacman -S mingw-w64-gcc mingw-w64-binutils # arch
-> apt install gcc-mingw-w64-x86-64 # ubuntu
+> pacman -S mingw-w64-gcc mingw-w64-binutils   # arch
+> apt install gcc-mingw-w64-x86-64             # ubuntu
 > ```
 >
 > Add a `.cargo/config.toml` so you don't have to pass `--target` every time:
@@ -79,7 +79,7 @@ On Linux:
 ```sh
 git clone https://github.com/MihaiStreames/DAWPresence.git
 cd DAWPresence
-cargo build --release # drop --target if you added config.toml above
+cargo build --release   # drop --target if you added config.toml above
 ```
 
 ## Supported DAWs

@@ -1,3 +1,4 @@
+use std::rc::Rc;
 use std::thread;
 
 use tracing::debug;
@@ -6,9 +7,7 @@ use tracing::trace;
 use super::config::DawConfig;
 use super::config::NormalizedConfig;
 use super::config::normalize_process_name;
-use super::regex_cache::RegexCache;
 use super::status::DawStatus;
-use super::status::UNKNOWN_VERSION;
 use crate::win32::handle::OwnedHandle;
 use crate::win32::process;
 use crate::win32::version;
@@ -34,17 +33,16 @@ impl Drop for TrackedProcess {
 }
 
 struct AttachedDaw {
-    config_index: usize,
+    config: Rc<NormalizedConfig>,
     processes: Vec<TrackedProcess>,
-    version: String,
+    version: Option<String>,
 }
 
 /// Two-phase DAW monitor:
 /// 1. Discovery via process snapshot
 /// 2. Per-PID metric polling
 pub struct DawScanner {
-    configs: Vec<NormalizedConfig>,
-    regex_cache: RegexCache,
+    configs: Vec<Rc<NormalizedConfig>>,
     attached: Option<AttachedDaw>,
     exits: ExitChannel,
     cpu_count: usize,
@@ -57,7 +55,6 @@ impl DawScanner {
 
         Self {
             configs: normalized,
-            regex_cache: RegexCache::new(),
             attached: None,
             exits: ExitChannel::new(),
             cpu_count: thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get),
@@ -69,66 +66,58 @@ impl DawScanner {
     pub fn poll(&mut self) -> Option<DawStatus> {
         self.handle_exits();
 
-        if self.attached.is_some() {
-            self.read_metrics()
-        } else {
-            self.discover_and_attach()
+        if self.attached.is_none() {
+            self.attached = self.discover();
         }
+
+        let daw = self.attached.as_mut()?;
+        Some(read_metrics(daw, self.cpu_count))
     }
 
     fn handle_exits(&mut self) {
         let dead = self.exits.drain();
-        if dead.is_empty() {
+
+        let Some(daw) = &mut self.attached else {
             return;
+        };
+
+        for pid in &dead {
+            debug!("Process {pid} exited");
+            daw.processes.retain(|process| process.pid != *pid);
         }
 
-        if let Some(daw) = &mut self.attached {
-            for pid in &dead {
-                debug!("Process {pid} exited");
-                daw.processes.retain(|p| p.pid != *pid);
-            }
-
-            if daw.processes.is_empty() {
-                debug!("All DAW processes exited, returning to discovery");
-                self.attached = None;
-            }
+        if daw.processes.is_empty() {
+            debug!("All DAW processes exited, returning to discovery");
+            self.attached = None;
         }
     }
 
-    fn discover_and_attach(&mut self) -> Option<DawStatus> {
-        let entries = process::snapshot();
+    fn discover(&self) -> Option<AttachedDaw> {
+        if self.configs.is_empty() {
+            return None;
+        }
 
         // normalize once per entry, not once per (entry * config)
-        let normalized: Vec<(u32, String)> = entries
+        let entries: Vec<(u32, String)> = process::snapshot()
             .iter()
-            .map(|e| (e.pid, normalize_process_name(&e.name)))
+            .map(|entry| (entry.pid, normalize_process_name(&entry.name)))
             .collect();
 
-        for (i, cfg) in self.configs.iter().enumerate() {
-            let pids: Vec<u32> = normalized
+        self.configs.iter().find_map(|config| {
+            let pids = entries
                 .iter()
-                .filter(|(_, name)| cfg.matches(name))
-                .map(|(pid, _)| *pid)
-                .collect();
+                .filter(|(_, name)| config.matches(name))
+                .map(|(pid, _)| *pid);
 
-            if pids.is_empty() {
-                continue;
-            }
-
-            debug!("Found {} ({} processes)", cfg.display_text(), pids.len());
-
-            self.attach(i, &pids);
-            return self.read_metrics();
-        }
-
-        None
+            self.attach(config, pids)
+        })
     }
 
-    fn attach(&mut self, config_index: usize, pids: &[u32]) {
+    fn attach(&self, config: &Rc<NormalizedConfig>, pids: impl Iterator<Item = u32>) -> Option<AttachedDaw> {
         let mut processes = Vec::new();
-        let mut cached_version = String::new();
+        let mut version = None;
 
-        for &pid in pids {
+        for pid in pids {
             let Some(handle) = process::open(pid) else {
                 trace!("Couldn't open PID {pid}, skipping");
                 continue;
@@ -136,13 +125,9 @@ impl DawScanner {
 
             // try each process until we get a real version
             // some DAW processes don't embed version info
-            if (cached_version.is_empty() || cached_version == UNKNOWN_VERSION)
-                && let Some(path) = process::exe_path(handle.raw())
-            {
-                let v = version::exe_version(&path);
-                if !v.is_empty() && v != UNKNOWN_VERSION {
-                    cached_version = v;
-                }
+
+            if version.is_none() && !config.hide_version() {
+                version = process::exe_path(handle.raw()).and_then(|path| version::exe_version(&path));
             }
 
             let wait_handle = self.exits.watch(pid, handle.raw());
@@ -159,67 +144,59 @@ impl DawScanner {
         }
 
         if processes.is_empty() {
-            return;
+            return None;
         }
 
-        if cached_version.is_empty() {
-            UNKNOWN_VERSION.clone_into(&mut cached_version);
-        }
+        debug!("Found {} ({} processes)", config.display_text(), processes.len());
 
-        self.attached = Some(AttachedDaw {
-            config_index,
+        Some(AttachedDaw {
+            config: Rc::clone(config),
             processes,
-            version: cached_version,
-        });
+            version,
+        })
+    }
+}
+
+fn read_metrics(daw: &mut AttachedDaw, cpu_count: usize) -> DawStatus {
+    let config = &daw.config;
+
+    let mut total_cpu: f32 = 0.0;
+    let mut total_memory: u64 = 0;
+    let mut best_title = String::new();
+
+    for process in &mut daw.processes {
+        let handle = process.handle.raw();
+
+        if let Some(bytes) = process::memory_bytes(handle) {
+            total_memory += bytes / (1024 * 1024);
+        }
+
+        total_cpu += calculate_cpu_percent(process, cpu_count);
+
+        let titles = window::window_titles(process.pid);
+
+        // prefer title that matches the DAW's title regex
+        // else fall back to longest (#46)
+
+        let title = titles
+            .iter()
+            .find(|title| config.title().matches(title))
+            .or_else(|| titles.iter().max_by_key(|title| title.len()))
+            .cloned()
+            .unwrap_or_default();
+
+        if title.len() > best_title.len() {
+            best_title = title;
+        }
     }
 
-    fn read_metrics(&mut self) -> Option<DawStatus> {
-        let daw = self.attached.as_mut()?;
-        #[allow(clippy::indexing_slicing)]
-        let cfg = &self.configs[daw.config_index];
-
-        let mut total_cpu: f32 = 0.0;
-        let mut total_memory: u64 = 0;
-        let mut best_title = String::new();
-
-        for p in &mut daw.processes {
-            let h = p.handle.raw();
-
-            if let Some(bytes) = process::memory_bytes(h) {
-                total_memory += bytes / (1024 * 1024);
-            }
-
-            total_cpu += calculate_cpu_percent(p, self.cpu_count);
-
-            let titles = window::window_titles(p.pid);
-
-            // prefer title that matches the DAW's title regex
-            // else fall back to longest (#46)
-
-            let title = titles
-                .iter()
-                .find(|t| self.regex_cache.title_matches(t, cfg.title_regex()))
-                .or_else(|| titles.iter().max_by_key(|t| t.len()))
-                .cloned()
-                .unwrap_or_default();
-
-            if title.len() > best_title.len() {
-                best_title = title;
-            }
-        }
-
-        let project_name = self.regex_cache.extract_project_name(&best_title, cfg.title_regex());
-
-        Some(DawStatus {
-            is_running: true,
-            display_name: cfg.display_text().to_owned(),
-            project_name,
-            cpu_usage: total_cpu,
-            memory_mb: total_memory,
-            version: daw.version.clone(),
-            client_id: cfg.client_id().to_owned(),
-            hide_version: cfg.hide_version(),
-        })
+    DawStatus {
+        display_name: config.display_text().to_owned(),
+        project: config.title().project(&best_title),
+        cpu_usage: total_cpu,
+        memory_mb: total_memory,
+        version: daw.version.clone(),
+        client_id: config.client_id().to_owned(),
     }
 }
 

@@ -59,12 +59,6 @@ impl AppSettings {
         confy::store("dawpresence", None, self).map_err(|e| ConfigError::SaveFailed(e.to_string()))
     }
 
-    pub fn set_update_interval(&mut self, interval: u64) -> Result<(), ConfigError> {
-        Self::validate_update_interval(interval)?;
-        self.update_interval = interval;
-        Ok(())
-    }
-
     pub fn validate_update_interval(interval: u64) -> Result<(), ConfigError> {
         if !(MIN_UPDATE_INTERVAL..=MAX_UPDATE_INTERVAL).contains(&interval) {
             return Err(ConfigError::InvalidInterval {

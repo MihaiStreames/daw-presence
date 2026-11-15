@@ -2,14 +2,12 @@ use super::*;
 
 fn running_status() -> DawStatus {
     DawStatus {
-        is_running: true,
         display_name: "FL Studio".to_owned(),
-        project_name: "song".to_owned(),
+        project: Project::Named("song".to_owned()),
         cpu_usage: 5.0,
         memory_mb: 512,
-        version: "21.0.0".to_owned(),
+        version: Some("21.0.0".to_owned()),
         client_id: "1234".to_owned(),
-        hide_version: false,
     }
 }
 
@@ -38,7 +36,7 @@ fn request_hides_system_usage_when_enabled() {
 #[test]
 fn request_omits_unknown_version() {
     let status = DawStatus {
-        version: UNKNOWN_VERSION.to_owned(),
+        version: None,
         ..running_status()
     };
 
@@ -49,7 +47,7 @@ fn request_omits_unknown_version() {
 #[test]
 fn untitled_project_shows_generic_details() {
     let status = DawStatus {
-        project_name: UNTITLED_PROJECT.to_owned(),
+        project: Project::Untitled,
         ..running_status()
     };
 

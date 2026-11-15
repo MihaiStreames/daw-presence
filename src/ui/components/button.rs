@@ -5,13 +5,14 @@ use iced::widget::button;
 use crate::ui::style;
 
 pub(in crate::ui) fn accent_button(theme: &iced::Theme, status: button::Status) -> button::Style {
+    let colors = style::colors(theme);
     let text_color = theme.palette().background;
 
     let (bg, tc) = match status {
-        button::Status::Active => (style::COLOR_ACCENT, text_color),
-        button::Status::Hovered => (style::COLOR_ACCENT_HOVER, text_color),
-        button::Status::Pressed => (style::COLOR_ACCENT_DIM, text_color),
-        button::Status::Disabled => (style::COLOR_SURFACE, style::COLOR_TEXT_DIM),
+        button::Status::Active => (colors.accent, text_color),
+        button::Status::Hovered => (colors.accent_hover, text_color),
+        button::Status::Pressed => (colors.accent_muted, text_color),
+        button::Status::Disabled => (colors.control, colors.text_muted),
     };
 
     button::Style {

@@ -26,8 +26,10 @@ pub fn take_receiver() -> Option<mpsc::Receiver<()>> {
     SHOW_RECEIVER.lock().ok()?.take()
 }
 
-/// Acquires the single-instance lock. If another instance is already running,
-/// signals it to show its window and returns `false`. Returns `true` otherwise
+/// Acquires the single-instance lock
+///
+/// If another instance is already running, signals it to show its window
+/// and returns `false`, otherwise `true`
 pub fn acquire() -> bool {
     let event_name = to_wide_null(EVENT_NAME);
 
